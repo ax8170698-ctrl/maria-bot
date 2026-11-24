@@ -145,6 +145,12 @@ def main():
         print("Missing environment variables!")
         return
 
+    # Fix for event loop on Render
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -155,6 +161,4 @@ def main():
     app.run_polling()
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.set_event_loop(asyncio.new_event_loop())
     main()
