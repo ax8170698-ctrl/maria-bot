@@ -1,6 +1,13 @@
 import os
 import logging
 import asyncio
+
+# Force event loop creation before anything else
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
 from collections import defaultdict
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -11,10 +18,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENROUTER_KEY = os.getenv("OPENROUTER_KEY")
 FAL_KEY = os.getenv("FAL_KEY")
 
-# Model on OpenRouter (you can change later)
 MODEL = "deepseek/deepseek-chat"
 
-# System prompt - personality
 SYSTEM_PROMPT = """You are Maria, a warm, empathetic, and caring young woman. 
 You are a good listener and make the user feel understood and special.
 You speak naturally, like a real person texting (short messages, casual language, emojis when it fits).
@@ -24,18 +29,15 @@ You remember previous messages in the conversation.
 If the user asks for a photo, selfie, or picture of you, reply with something like "Sure, give me a second..." and the system will generate it.
 Keep responses not too long."""
 
-# Store conversation history per user
 user_histories = defaultdict(list)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ============== OPENROUTER ==============
 async def ask_llm(user_id: int, user_message: str) -> str:
     history = user_histories[user_id]
     history.append({"role": "user", "content": user_message})
 
-    # Keep only last 12 messages to save tokens
     if len(history) > 12:
         history = history[-12:]
         user_histories[user_id] = history
@@ -69,14 +71,12 @@ async def ask_llm(user_id: int, user_message: str) -> str:
     history.append({"role": "assistant", "content": reply})
     return reply
 
-# ============== FAL.AI IMAGE ==============
 async def generate_image(prompt: str) -> str | None:
     headers = {
         "Authorization": f"Key {FAL_KEY}",
         "Content-Type": "application/json"
     }
 
-    # Better prompt for consistent character
     full_prompt = f"beautiful young woman, soft natural makeup, warm friendly expression, photorealistic, high quality, detailed face, {prompt}"
 
     payload = {
@@ -87,7 +87,6 @@ async def generate_image(prompt: str) -> str | None:
     }
 
     async with httpx.AsyncClient(timeout=90) as client:
-        # Submit
         res = await client.post(
             "https://fal.run/fal-ai/flux/schnell",
             headers=headers,
@@ -100,7 +99,6 @@ async def generate_image(prompt: str) -> str | None:
             return data["images"][0]["url"]
         return None
 
-# ============== HANDLERS ==============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_histories[user_id] = []
@@ -112,9 +110,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
 
-    # Simple image trigger
     lower = text.lower()
-    if any(word in lower for word in ["photo", "picture", "selfie", "pic", "image", "صورة", "селفي", "фото"]):
+    if any(word in lower for word in ["photo", "picture", "selfie", "pic", "image", "صورة", "селфи", "фото"]):
         await update.message.reply_text("Okay... give me a second 🤍")
         try:
             image_url = await generate_image("selfie, looking at camera, soft smile, natural lighting")
@@ -127,7 +124,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Something went wrong with the photo... sorry.")
         return
 
-    # Normal chat
     try:
         reply = await ask_llm(user_id, text)
         await update.message.reply_text(reply)
@@ -144,9 +140,6 @@ def main():
     if not all([TELEGRAM_TOKEN, OPENROUTER_KEY, FAL_KEY]):
         print("Missing environment variables!")
         return
-
-    import nest_asyncio
-    nest_asyncio.apply()
 
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
