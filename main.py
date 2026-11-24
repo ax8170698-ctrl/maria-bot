@@ -114,7 +114,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Simple image trigger
     lower = text.lower()
-    if any(word in lower for word in ["photo", "picture", "selfie", "pic", "image", "صورة", "селфи", "фото"]):
+    if any(word in lower for word in ["photo", "picture", "selfie", "pic", "image", "صورة", "селفي", "фото"]):
         await update.message.reply_text("Okay... give me a second 🤍")
         try:
             image_url = await generate_image("selfie, looking at camera, soft smile, natural lighting")
@@ -155,4 +155,6 @@ def main():
     app.run_polling()
 
 if __name__ == "__main__":
+    import asyncio
+    asyncio.set_event_loop(asyncio.new_event_loop())
     main()
