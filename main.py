@@ -145,11 +145,8 @@ def main():
         print("Missing environment variables!")
         return
 
-    # Fix for event loop on Render
-    try:
-        asyncio.get_event_loop()
-    except RuntimeError:
-        asyncio.set_event_loop(asyncio.new_event_loop())
+    import nest_asyncio
+    nest_asyncio.apply()
 
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
