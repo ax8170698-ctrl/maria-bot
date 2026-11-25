@@ -1,22 +1,24 @@
 import os
 import logging
 import asyncio
-
-# Force event loop creation before anything else
-try:
-    asyncio.get_event_loop()
-except RuntimeError:
-    asyncio.set_event_loop(asyncio.new_event_loop())
-
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from collections import defaultdict
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import httpx
 
+# Force event loop
+try:
+    asyncio.get_event_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
 # ============== CONFIG ==============
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENROUTER_KEY = os.getenv("OPENROUTER_KEY")
 FAL_KEY = os.getenv("FAL_KEY")
+PORT = int(os.getenv("PORT", 10000))
 
 MODEL = "deepseek/deepseek-chat"
 
@@ -34,6 +36,18 @@ user_histories = defaultdict(list)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Simple health check server for Render
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+def start_health_server():
+    server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
+    server.serve_forever()
+
+# ============== OPENROUTER ==============
 async def ask_llm(user_id: int, user_message: str) -> str:
     history = user_histories[user_id]
     history.append({"role": "user", "content": user_message})
@@ -71,6 +85,7 @@ async def ask_llm(user_id: int, user_message: str) -> str:
     history.append({"role": "assistant", "content": reply})
     return reply
 
+# ============== FAL.AI IMAGE ==============
 async def generate_image(prompt: str) -> str | None:
     headers = {
         "Authorization": f"Key {FAL_KEY}",
@@ -99,6 +114,7 @@ async def generate_image(prompt: str) -> str | None:
             return data["images"][0]["url"]
         return None
 
+# ============== HANDLERS ==============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_histories[user_id] = []
@@ -140,6 +156,9 @@ def main():
     if not all([TELEGRAM_TOKEN, OPENROUTER_KEY, FAL_KEY]):
         print("Missing environment variables!")
         return
+
+    # Start health server in background so Render stays happy
+    threading.Thread(target=start_health_server, daemon=True).start()
 
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
