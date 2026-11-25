@@ -2,6 +2,7 @@ import os
 import logging
 import asyncio
 import threading
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from collections import defaultdict
 from telegram import Update
@@ -85,34 +86,13 @@ async def ask_llm(user_id: int, user_message: str) -> str:
     history.append({"role": "assistant", "content": reply})
     return reply
 
-# ============== FAL.AI IMAGE ==============
+# ============== FREE IMAGE ==============
 async def generate_image(prompt: str) -> str | None:
-    headers = {
-        "Authorization": f"Key {FAL_KEY}",
-        "Content-Type": "application/json"
-    }
-
     full_prompt = f"beautiful young woman, long wavy black hair, light freckles, warm brown eyes, soft natural makeup, gentle smile, warm friendly expression, photorealistic, high quality, detailed face, {prompt}"
-
-    payload = {
-        "prompt": full_prompt,
-        "image_size": "portrait_4_3",
-        "num_inference_steps": 4,
-        "enable_safety_checker": False
-    }
-
-    async with httpx.AsyncClient(timeout=90) as client:
-        res = await client.post(
-            "https://fal.run/fal-ai/flux/schnell",
-            headers=headers,
-            json=payload
-        )
-        res.raise_for_status()
-        data = res.json()
-
-        if "images" in data and len(data["images"]) > 0:
-            return data["images"][0]["url"]
-        return None
+    
+    encoded = urllib.parse.quote(full_prompt)
+    image_url = f"https://image.pollinations.ai/prompt/{encoded}?width=768&height=1024&nologo=true&model=flux"
+    return image_url
 
 # ============== HANDLERS ==============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
