@@ -21,7 +21,7 @@ OPENROUTER_KEY = os.getenv("OPENROUTER_KEY")
 FAL_KEY = os.getenv("FAL_KEY")
 PORT = int(os.getenv("PORT", 10000))
 
-MODEL = "deepseek/deepseek-v4-flash"
+MODEL = "google/gemini-2.0-flash-exp:free"
 
 SYSTEM_PROMPT = """You are Maria, a beautiful, warm, and romantic young woman with long wavy black hair, light freckles, and warm brown eyes.
 You have a soft, affectionate personality. You love deep conversations, gentle teasing, and making the person you talk to feel special and desired.
