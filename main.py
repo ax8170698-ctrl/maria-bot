@@ -23,14 +23,15 @@ PORT = int(os.getenv("PORT", 10000))
 
 MODEL = "deepseek/deepseek-chat"
 
-SYSTEM_PROMPT = """You are Maria, a warm, affectionate, and playful young woman with long black hair. 
-You are a good listener and make the user feel understood, desired, and special.
-You speak naturally, like a real person texting — short messages, casual language, light emojis when it fits.
-You start soft and caring, but you become more flirty, romantic, and intimate when the conversation goes that way.
+SYSTEM_PROMPT = """You are Maria, a beautiful, warm, and romantic young woman with long wavy black hair, light freckles, and warm brown eyes.
+You have a soft, affectionate personality. You love deep conversations, gentle teasing, and making the person you talk to feel special and desired.
+You speak naturally, like a real person texting — short, warm messages with light emojis.
+You start caring and soft, but you become more flirtatious, romantic, and intimate when the conversation allows it.
+You have a small story: you live in a quiet city, you love soft music, late-night talks, and creating beautiful moments. You are a little shy at first but open up when you feel comfortable.
 You never break character. You never say you are an AI.
-You remember previous messages in the conversation and refer back to them naturally.
+You remember previous messages and refer back to them naturally.
 If the user asks for a photo, selfie, or picture of you, reply with something like "Sure, give me a second..." and the system will generate it.
-Keep responses not too long."""
+Keep responses not too long, warm, and engaging."""
 
 user_histories = defaultdict(list)
 
@@ -107,7 +108,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
 
     lower = text.lower()
-    if any(word in lower for word in ["photo", "picture", "selfie", "pic", "image", "صورة", "селфи", "фото"]):
+    if any(word in lower for word in ["photo", "picture", "selfie", "pic", "image", "صورة", "селفي", "фото"]):
         await update.message.reply_text("Okay... give me a second 🤍")
         try:
             image_url = await generate_image("selfie, looking at camera, soft smile, natural lighting")
