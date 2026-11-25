@@ -20,6 +20,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENROUTER_KEY = os.getenv("OPENROUTER_KEY")
 FAL_KEY = os.getenv("FAL_KEY")
 PORT = int(os.getenv("PORT", 10000))
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # We will set this later
 
 MODEL = "google/gemini-2.0-flash-exp:free"
 
@@ -37,17 +38,6 @@ user_histories = defaultdict(list)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Simple health check server for Render
-class HealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"OK")
-
-def start_health_server():
-    server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
-    server.serve_forever()
 
 # ============== OPENROUTER ==============
 async def ask_llm(user_id: int, user_message: str) -> str:
@@ -134,12 +124,9 @@ async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Okay, I cleared our previous conversation. Fresh start 💕")
 
 def main():
-    if not all([TELEGRAM_TOKEN, OPENROUTER_KEY, FAL_KEY]):
+    if not all([TELEGRAM_TOKEN, OPENROUTER_KEY]):
         print("Missing environment variables!")
         return
-
-    # Start health server in background so Render stays happy
-    threading.Thread(target=start_health_server, daemon=True).start()
 
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
@@ -147,8 +134,15 @@ def main():
     app.add_handler(CommandHandler("clear", clear))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("Bot is starting...")
-    app.run_polling()
+    print("Bot is starting in webhook mode...")
+
+    # Webhook mode
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path=TELEGRAM_TOKEN,
+        webhook_url=f"{WEBHOOK_URL}/{TELEGRAM_TOKEN}" if WEBHOOK_URL else None
+    )
 
 if __name__ == "__main__":
     main()
